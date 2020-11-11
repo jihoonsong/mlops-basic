@@ -1,6 +1,7 @@
 import argparse
 import os
 import tensorflow as tf
+from google.cloud import bigquery
 
 
 _train_file = 'train.csv'
@@ -42,6 +43,42 @@ def save_data_as_csv(x_train, y_train, x_test, y_test):
             print(f'Generated {output_rows + 1} rows into {_test_file}')
 
 
+def load_data_to_bigquery(project):
+    dataset = 'fashion_mnist'
+    train_table = 'train'
+    test_table = 'test'
+
+    # Create dataset, train and test tables.
+    client = bigquery.Client(project=project)
+    client.create_dataset(dataset)
+    train_destination = client.create_table(f'{project}.{dataset}.{train_table}')
+    test_destination = client.create_table(f'{project}.{dataset}.{test_table}')
+
+    # Set job configuration.
+    job_config = bigquery.LoadJobConfig()
+    job_config.source_format = bigquery.SourceFormat.CSV
+    job_config.autodetect = True
+
+    # Load train data to BigQuery.
+    with open(_train_file, "rb") as input:
+        train_load = client.load_table_from_file(
+            input, train_destination, job_config=job_config
+        )
+
+    # Load test data to BigQuery.
+    with open(_test_file, "rb") as input:
+        test_load = client.load_table_from_file(
+            input, test_destination, job_config=job_config
+        )
+
+    # The loading is an async operation. Wait for it to finish.
+    train_load.result()
+    test_load.result()
+
+    print(f'Loaded {train_load.output_rows} rows from {_train_file} into {project}.{dataset}.{train_table}')
+    print(f'Loaded {test_load.output_rows} rows from {_test_file} into {project}.{dataset}.{test_table}')
+
+
 if __name__ == "__main__":
     description = """
     This script generates fashion_mnist data and upload it as a
@@ -61,4 +98,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    load_data_to_bigquery(args.project)
     save_data_as_csv(*generate_data())
