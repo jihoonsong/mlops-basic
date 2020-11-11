@@ -8,6 +8,16 @@ _train_file = 'train.csv'
 _test_file = 'test.csv'
 
 
+def clear_data():
+    if os.path.exists(_train_file):
+        os.remove(_train_file)
+        print(f'Removed {_train_file}')
+
+    if os.path.exists(_test_file):
+        os.remove(_test_file)
+        print(f'Removed {_test_file}')
+
+
 def generate_data():
     # We use fashion-mnist here.
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
@@ -100,3 +110,4 @@ if __name__ == "__main__":
 
     load_data_to_bigquery(args.project)
     save_data_as_csv(*generate_data())
+    clear_data()
