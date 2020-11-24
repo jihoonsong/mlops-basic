@@ -38,7 +38,7 @@ def save_data_as_csv(x_train, y_train, x_test, y_test):
             output_rows = 0
             for output_rows, (image, label) in enumerate(zip(x_train, y_train)):
                 image_raw = ','.join(map(str, image.flatten().tolist()))
-                output.write(f'{output_rows}|{image_raw}|{label}')
+                output.write(f'{image_raw}|{label}')
                 output.write('\n')
 
             print(f'Generated {output_rows + 1} rows into {_train_file}')
@@ -49,7 +49,7 @@ def save_data_as_csv(x_train, y_train, x_test, y_test):
             output_rows = 0
             for output_rows, (image, label) in enumerate(zip(x_test, y_test)):
                 image_raw = ','.join(map(str, image.flatten().tolist()))
-                output.write(f'{output_rows}|{image_raw}|{label}')
+                output.write(f'{image_raw}|{label}')
                 output.write('\n')
 
             print(f'Generated {output_rows + 1} rows into {_test_file}')
