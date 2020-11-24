@@ -22,9 +22,6 @@ def generate_data():
     # We use Fashion-MNIST here.
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
 
-    # Normalize to [0.0, 1.0]
-    x_train, x_test = x_train / 255.0, x_test / 255.0
-
     # Add a channel dimension.
     x_train, x_test = x_train[..., tf.newaxis], x_test[..., tf.newaxis]
 
