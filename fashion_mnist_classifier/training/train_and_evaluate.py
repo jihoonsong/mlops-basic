@@ -16,9 +16,8 @@
 import argparse
 import numpy as np
 import os
-import sys
 import tensorflow as tf
-from fashion_mnist_classifier.models.cnn import CNN
+from fashion_mnist_classifier.models.dnn import DNN
 from google.cloud import bigquery
 
 
@@ -82,42 +81,49 @@ def load_data_from_bigquery(project):
         print(f'Downloaded {x_test.shape[0]} rows into {_x_test_file}')
         print(f'Downloaded {y_test.shape[0]} rows into {_y_test_file}')
 
+
 def generator(images, labels):
-    def _gen():
+    def _generator():
         for image, label in zip(images, labels):
             yield image, label
 
-    return _gen
+    return _generator
 
 
-def preprocess_image(image, label=None):
-    # image = image / 255.
+def preprocess_data(image, label):
+    image = image / 255.0
     image = tf.reshape(image, [28, 28, 1])
-    features = {'image': image}
-    return features, label
+
+    # The image data are mapped to 'image' feature column.
+    return {'image': image}, label
 
 
 def train_input_fn():
     x_train = np.load(_x_train_file)
     y_train = np.load(_y_train_file)
 
-    dataset = tf.data.Dataset.from_generator(
-        generator(x_train, y_train), (tf.float32, tf.int32), ((28 * 28), ()))
+    train_dataset = tf.data.Dataset.from_generator(
+        generator(x_train, y_train),
+        (tf.float32, tf.int32),
+        (tf.TensorShape([28 * 28 * 1]), tf.TensorShape([]))
+    )
+    train_dataset = train_dataset.map(preprocess_data).batch(1024)
 
-    dataset = dataset.map(lambda features, labels: ({'image': features}, labels))
-    dataset = dataset.map(preprocess_image).batch(1024)
-    return dataset
+    return train_dataset
 
 
 def predict_input_fn():
     x_test = np.load(_x_test_file)
     y_test = np.load(_y_test_file)
 
-    dataset = tf.data.Dataset.from_generator(
-        generator(x_test, y_test), (tf.float32, tf.int32), ((28 * 28), ()))
+    test_dataset = tf.data.Dataset.from_generator(
+        generator(x_test, y_test),
+        (tf.float32, tf.int32),
+        (tf.TensorShape([28 * 28 * 1]), tf.TensorShape([]))
+    )
+    test_dataset = test_dataset.map(preprocess_data).batch(1024)
 
-    dataset = dataset.map(preprocess_image).batch(1024)
-    return dataset
+    return test_dataset
 
 
 if __name__ == "__main__":
@@ -136,51 +142,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=description,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--project', type=str, default='mlops-basic', help='Your GCP project id')
-    parser.add_argument('--seed', type=int, default=0, help='Random seed')
 
     args = parser.parse_args()
 
+    # Prepare data.
     load_data_from_bigquery(args.project)
 
-    # train_input_dataset = train_input_fn()
-    # eval_input_dataset = predict_input_fn()
-    # x_train = np.load(_x_train_file)
-    # y_train = np.load(_y_train_file)
-    # train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-    # print(type(train_dataset))
+    # Prepare model.
+    dnn = DNN()
+    estimator = dnn.get_estimator()
 
-    def gen():
-        x_train = np.load(_x_train_file)
-        y_train = np.load(_y_train_file)
-        for image, label in zip(x_train, y_train):
-            yield image, label
-
-    def your_callab():
-        dataset = tf.data.Dataset.from_generator(
-            gen,
-            (tf.float32, tf.int32), ((28 * 28), ()))
-        dataset = dataset.map(preprocess_image).batch(1024)
-        return dataset
-
-    estimator = tf.estimator.DNNClassifier(
-        feature_columns=[
-            tf.feature_column.numeric_column('image', shape=[28, 28, 1])
-        ],
-        hidden_units=[1024, 512, 10],
-        n_classes=10)
-    estimator.train(input_fn=your_callab, steps=500)
-    metrics = estimator.evaluate(input_fn=your_callab)
-    print(metrics)
-    # tf.estimator.DNNClassifier(
-    #     hidden_units, feature_columns, model_dir=None, n_classes=2, weight_column=None,
-    #     label_vocabulary=None, optimizer='Adagrad', activation_fn=tf.nn.relu,
-    #     dropout=None, config=None, warm_start_from=None,
-    #     loss_reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE, batch_norm=False
-    # )
-
-    # results, _ = tf.estimator.train_and_evaluate(
-    #     estimator,
-    #     train_spec=self.get_train_spec(train_input_fn),
-    #     eval_spec=self.get_eval_spec(eval_input_fn),
-    # )
-    # return results
+    # Train and evaluate model.
+    estimator.train(input_fn=train_input_fn)
+    evaluation = estimator.evaluate(input_fn=predict_input_fn)
+    print(evaluation)
