@@ -22,9 +22,6 @@ def generate_data():
     # We use Fashion-MNIST here.
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
 
-    # Normalize to [0.0, 1.0]
-    x_train, x_test = x_train / 255.0, x_test / 255.0
-
     # Add a channel dimension.
     x_train, x_test = x_train[..., tf.newaxis], x_test[..., tf.newaxis]
 
@@ -38,7 +35,7 @@ def save_data_as_csv(x_train, y_train, x_test, y_test):
             output_rows = 0
             for output_rows, (image, label) in enumerate(zip(x_train, y_train)):
                 image_raw = ','.join(map(str, image.flatten().tolist()))
-                output.write(f'{output_rows}|{image_raw}|{label}')
+                output.write(f'{image_raw}|{label}')
                 output.write('\n')
 
             print(f'Generated {output_rows + 1} rows into {_train_file}')
@@ -49,7 +46,7 @@ def save_data_as_csv(x_train, y_train, x_test, y_test):
             output_rows = 0
             for output_rows, (image, label) in enumerate(zip(x_test, y_test)):
                 image_raw = ','.join(map(str, image.flatten().tolist()))
-                output.write(f'{output_rows}|{image_raw}|{label}')
+                output.write(f'{image_raw}|{label}')
                 output.write('\n')
 
             print(f'Generated {output_rows + 1} rows into {_test_file}')
