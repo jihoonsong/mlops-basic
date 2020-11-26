@@ -22,6 +22,7 @@ from google.cloud import bigquery
 
 
 _dataset_path = 'fashion_mnist_classifier/datasets/'
+_weights_path = 'fashion_mnist_classifier/weights/'
 _x_train_file = _dataset_path + 'x_train.npy'
 _y_train_file = _dataset_path + 'y_train.npy'
 _x_test_file = _dataset_path + 'x_test.npy'
@@ -126,6 +127,17 @@ def predict_input_fn():
     return test_dataset
 
 
+def serving_input_receiver_fn():
+    receiver_tensors = {
+        'image': tf.compat.v1.placeholder(
+            dtype=tf.float32, shape=[None, 28, 28, 1], name='image'
+        )
+    }
+    features = {'image': receiver_tensors['image']}
+
+    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
+
+
 if __name__ == "__main__":
     description = """
     This script generates fashion_mnist data and upload it as a
@@ -156,3 +168,9 @@ if __name__ == "__main__":
     estimator.train(input_fn=train_input_fn)
     evaluation = estimator.evaluate(input_fn=predict_input_fn)
     print(evaluation)
+
+    # Save trained model.
+    estimator.export_saved_model(
+        export_dir_base=_weights_path,
+        serving_input_receiver_fn=serving_input_receiver_fn
+    )
